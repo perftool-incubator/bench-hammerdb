@@ -1,0 +1,35 @@
+#!/bin/bash
+# -*- mode: sh; indent-tabs-mode: nil; sh-basic-offset: 4 -*-
+# vim: autoindent tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=sh
+
+exec > hammerdb-client-stderrout.txt 2>&1
+
+. /usr/bin/hammerdb-base || exit 1
+
+validate_label || exit_error "HammerDB requires a valid RS_CS_LABEL" 1
+validate_sw_prereqs python3 || exit_error "HammerDB requires Python 3" 1
+
+forward_signal() {
+    local signal_name="$1"
+    if [[ -n "${python_pid:-}" ]]; then
+        kill -s "${signal_name}" "${python_pid}" 2>/dev/null || true
+        wait "${python_pid}"
+    fi
+    exit_error "HammerDB run interrupted by ${signal_name}" 1
+}
+
+trap 'forward_signal TERM' TERM
+trap 'forward_signal INT' INT
+
+python3 /usr/bin/hammerdb-client.py "$@" &
+python_pid=$!
+wait "${python_pid}"
+rc=$?
+trap - TERM INT
+if [[ ${rc} -ne 0 ]]; then
+    message="HammerDB run failed"
+    if [[ -s hammerdb-error.txt ]]; then
+        message=$(cat hammerdb-error.txt)
+    fi
+    exit_error "${message}" "${rc}"
+fi

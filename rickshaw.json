@@ -1,0 +1,22 @@
+{
+  "rickshaw-benchmark": {
+    "schema": {
+      "version": "2020.05.18"
+    }
+  },
+  "benchmark": "hammerdb",
+  "controller": {
+    "post-script": "%bench-dir%hammerdb-post-process.py"
+  },
+  "client": {
+    "files-from-controller": [
+      { "src": "%bench-dir%/hammerdb-base", "dest": "/usr/bin/" },
+      { "src": "%bench-dir%/hammerdb_common.py", "dest": "/usr/bin/" },
+      { "src": "%bench-dir%/hammerdb-client.py", "dest": "/usr/bin/" },
+      { "src": "%bench-dir%/hammerdb-get-runtime", "dest": "/usr/bin/" },
+      { "src": "%bench-dir%/hammerdb-client", "dest": "/usr/bin/" }
+    ],
+    "runtime": "hammerdb-get-runtime",
+    "start": "hammerdb-client"
+  }
+}

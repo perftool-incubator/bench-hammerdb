@@ -1,0 +1,25 @@
+{
+  "rickshaw-benchmark-metadata": {
+    "schema": {
+      "version": "2026.08.11"
+    }
+  },
+  "benchmark": "hammerdb",
+  "description": "Runs native HammerDB TPROC-C against a private MariaDB or PostgreSQL instance on the same client engine, indexing NOPM and backend-specific TPM.",
+  "cdm_indexed": true,
+  "cdm_sources": [
+    { "source": "hammerdb", "types": ["nopm"] },
+    { "source": "hammerdb-mariadb", "types": ["mariadb-tpm"] },
+    { "source": "hammerdb-postgresql", "types": ["postgresql-tpm"] }
+  ],
+  "output_files": [
+    "hammerdb-native-output.txt",
+    "hammerdb-driver-check.txt",
+    "hammerdb-schema-build.txt",
+    "hammerdb-schema-check.txt",
+    "hammerdb-database-server.log",
+    "hammerdb-run-manifest.json",
+    "hammerdb-client-stderrout.txt",
+    "hammerdb-error.txt"
+  ]
+}

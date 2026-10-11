@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""Print a safe Rickshaw timeout estimate for one HammerDB sample."""
+
+import sys
+
+from hammerdb_common import (
+    MAX_DURATION_MINUTES,
+    MAX_RAMPUP_MINUTES,
+    RUNTIME_FIXED_SECONDS,
+    parse_cli,
+    runtime_seconds,
+)
+
+
+def main(argv):
+    try:
+        args = parse_cli(argv)
+        estimate = runtime_seconds(args)
+    except (SystemExit, ValueError):
+        # Invalid input is rejected by client-start. Keep Rickshaw's roadblock
+        # bounded while allowing that phase to report the actual parameter error.
+        estimate = RUNTIME_FIXED_SECONDS + 60 * (MAX_RAMPUP_MINUTES + MAX_DURATION_MINUTES)
+    print(estimate)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

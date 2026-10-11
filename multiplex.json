@@ -1,0 +1,50 @@
+{
+  "presets": {
+    "defaults": [
+      { "arg": "backend", "vals": ["mariadb"] },
+      { "arg": "warehouses", "vals": ["1"] },
+      { "arg": "virtual-users", "vals": ["2"] },
+      { "arg": "rampup-minutes", "vals": ["1"] },
+      { "arg": "duration-minutes", "vals": ["1"] },
+      { "arg": "data-dir", "vals": ["."] },
+      { "arg": "log-dir", "vals": ["."] }
+    ]
+  },
+  "validations": {
+    "backend": {
+      "description": "Provisioned local database engine",
+      "args": ["backend"],
+      "vals": "^(mariadb|postgresql)$"
+    },
+    "warehouses": {
+      "description": "bounded TPROC-C warehouse count from 1 through 4",
+      "args": ["warehouses"],
+      "vals": "^[1-4]$"
+    },
+    "virtual_users": {
+      "description": "workload VUs from 1 through 16; timed monitor VU1 is added separately",
+      "args": ["virtual-users"],
+      "vals": "^([1-9]|1[0-6])$"
+    },
+    "rampup_minutes": {
+      "description": "HammerDB warm-up period from 0 through 30 minutes",
+      "args": ["rampup-minutes"],
+      "vals": "^(0|[1-9]|[12][0-9]|30)$"
+    },
+    "duration_minutes": {
+      "description": "timed counter-measurement period from 1 through 60 minutes",
+      "args": ["duration-minutes"],
+      "vals": "^([1-9]|[1-5][0-9]|60)$"
+    },
+    "data_dir": {
+      "description": "mechanics-only private temp root when dot is selected, or an absolute existing engine mountpoint",
+      "args": ["data-dir"],
+      "vals": "^(\\.|/[A-Za-z0-9._/-]+)$"
+    },
+    "log_dir": {
+      "description": "mechanics-only private temp root when dot is selected, or an absolute existing engine mountpoint for MariaDB redo/PostgreSQL WAL",
+      "args": ["log-dir"],
+      "vals": "^(\\.|/[A-Za-z0-9._/-]+)$"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+#!/bin/bash
+# -*- mode: sh; indent-tabs-mode: nil; sh-basic-offset: 4 -*-
+# vim: autoindent tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=sh
+
+if [[ -z "${TOOLBOX_HOME:-}" ]]; then
+    echo "TOOLBOX_HOME is not set; cannot load Crucible benchmark helpers" >&2
+    return 1
+fi
+
+. "${TOOLBOX_HOME}/bash/library/bench-base"

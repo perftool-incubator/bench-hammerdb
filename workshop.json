@@ -1,0 +1,46 @@
+{
+  "workshop": {
+    "schema": {
+      "version": "2020.03.02"
+    }
+  },
+  "userenvs": [
+    {
+      "name": "alma9",
+      "requirements": [
+        "hammerdb_runtime_packages",
+        "hammerdb_v6_release"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "name": "hammerdb_runtime_packages",
+      "type": "distro",
+      "distro_info": {
+        "packages": [
+          "coreutils",
+          "curl",
+          "mariadb-server",
+          "mariadb-connector-c",
+          "postgresql-server",
+          "postgresql",
+          "libpq",
+          "python3",
+          "rpm",
+          "tar",
+          "util-linux"
+        ]
+      }
+    },
+    {
+      "name": "hammerdb_v6_release",
+      "type": "manual",
+      "manual_info": {
+        "commands": [
+          "set -eu; temp_dir=$(mktemp -d /tmp/hammerdb-v6.XXXXXX); trap 'rm -rf \"$temp_dir\"' EXIT; case \"$(uname -m)\" in x86_64) archive=HammerDB-6.0-Prod-Lin-RHEL9.tar.gz; url=https://github.com/TPC-Council/HammerDB/releases/download/v6.0/HammerDB-6.0-Prod-Lin-RHEL9.tar.gz; sha256=b4e0b1c84f9ac74802c86628b3ebca527ef314404be68827fca30174147a92b6 ;; aarch64) archive=HammerDB-6.0-Prod-Lin-RHEL9-ARM64.tar.gz; url=https://github.com/TPC-Council/HammerDB/releases/download/v6.0/HammerDB-6.0-Prod-Lin-RHEL9-ARM64.tar.gz; sha256=6f6687ff3f9545dee2a1d2844a236a6df71a446621f750dad66dfd828ea5a4c9 ;; *) echo 'Unsupported HammerDB architecture' >&2; exit 1 ;; esac; curl --fail --location --silent --show-error --output \"$temp_dir/$archive\" \"$url\"; printf '%s  %s\\n' \"$sha256\" \"$temp_dir/$archive\" | sha256sum --check --status; mkdir -p /opt/crucible/software; tar -xzf \"$temp_dir/$archive\" -C /opt/crucible/software; test -x /opt/crucible/software/HammerDB-6.0/hammerdbcli; test -f /opt/crucible/software/HammerDB-6.0/LICENSE"
+        ]
+      }
+    }
+  ]
+}
