@@ -1,5 +1,7 @@
 # HammerDB for Crucible
 
+Client-only HammerDB TPROC-C benchmark for the [Crucible](https://github.com/perftool-incubator/crucible) performance testing framework.
+
 This project adds a client-only HammerDB subproject for native TPROC-C runs against a private MariaDB or PostgreSQL instance started inside the same Crucible client engine. It has no server role and does not require a pre-existing database service.
 
 The initial Workshop target is the `alma9` userenv. HammerDB's official v6.0 RHEL 9 x86_64 and aarch64 release archives are selected by architecture and SHA-256 checked before installation. The pinned tag commit is [`d33f879aec858063edd17aa2daa46db03abb2bae`](https://github.com/TPC-Council/HammerDB/tree/d33f879aec858063edd17aa2daa46db03abb2bae). The full upstream GPL-3.0 text is included at [third-party/HammerDB-GPL-3.0.txt](third-party/HammerDB-GPL-3.0.txt); the adapter is Apache-2.0 licensed.
