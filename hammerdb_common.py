@@ -647,22 +647,31 @@ def write_private_text(path, text):
 def process_marker(process):
     """Return Linux process identity fields for an owned live child."""
     pid = process.pid
+    return_code = process.poll()
+    marker = {"pid": pid, "alive": return_code is None}
+    if return_code is not None:
+        marker["return_code"] = return_code
     try:
         cmdline = Path("/proc/%d/cmdline" % pid).read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
         executable = os.path.realpath("/proc/%d/exe" % pid)
-    except OSError:
-        return {"pid": pid, "alive": False}
+    except OSError as exc:
+        # /proc access can be restricted when this process supervises a
+        # database running as its service account. The Popen handle remains
+        # authoritative for whether our owned child is still alive.
+        marker["proc_inspection_error"] = "%s: %s" % (type(exc).__name__, exc)
+        return marker
     try:
         process_group = os.getpgid(pid)
     except OSError:
         process_group = None
-    return {
-        "pid": pid,
-        "process_group": process_group,
-        "alive": process.poll() is None,
-        "executable": executable,
-        "command_line": cmdline,
-    }
+    marker.update(
+        {
+            "process_group": process_group,
+            "executable": executable,
+            "command_line": cmdline,
+        }
+    )
+    return marker
 
 
 def database_version_command(backend):

@@ -104,6 +104,52 @@ class HammerDBAdapterTests(unittest.TestCase):
         self.assertTrue(result["group_stopped"])
         self.assertTrue(adapter.process_group_is_stopped(process.pid))
 
+    def test_database_liveness_uses_owned_child_when_proc_access_is_denied(self):
+        class OwnedProcess:
+            pid = os.getpid()
+            args = [
+                "/usr/sbin/mariadbd",
+                "--datadir=/tmp/hammerdb-private/database",
+                "--port=40004",
+            ]
+
+            def poll(self):
+                return None
+
+        with mock.patch.object(adapter.Path, "read_bytes", side_effect=PermissionError):
+            marker = adapter.process_is_our_database(
+                OwnedProcess(),
+                "mariadb",
+                "/tmp/hammerdb-private/database",
+                40004,
+            )
+
+        self.assertTrue(marker["alive"])
+        self.assertEqual(marker["command_line"], " ".join(OwnedProcess.args))
+        self.assertEqual(marker["executable"], "/usr/sbin/mariadbd")
+        self.assertIn("PermissionError", marker["proc_inspection_error"])
+
+    def test_exited_database_process_records_return_code(self):
+        class ExitedProcess:
+            pid = os.getpid()
+            args = [
+                "/usr/sbin/mariadbd",
+                "--datadir=/tmp/hammerdb-private/database",
+                "--port=40004",
+            ]
+
+            def poll(self):
+                return 17
+
+        with mock.patch.object(adapter.Path, "read_bytes", side_effect=PermissionError):
+            with self.assertRaisesRegex(RuntimeError, "return code 17"):
+                adapter.process_is_our_database(
+                    ExitedProcess(),
+                    "mariadb",
+                    "/tmp/hammerdb-private/database",
+                    40004,
+                )
+
     def test_closed_stdout_does_not_end_cli_supervision_early(self):
         args = type("Args", (), {"warehouses": 1, "virtual_users": 2, "rampup_minutes": 1, "duration_minutes": 1})()
         with tempfile.TemporaryDirectory() as temporary_directory:
