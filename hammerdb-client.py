@@ -242,14 +242,24 @@ def tcl_braced(value):
 def process_is_our_database(process, backend, datadir, port):
     marker = process_marker(process)
     if not marker.get("alive"):
-        raise RuntimeError("the owned database process exited before becoming ready")
-    command_line = marker.get("command_line", "")
+        return_code = marker.get("return_code")
+        detail = " with return code %s" % return_code if return_code is not None else ""
+        raise RuntimeError("the owned database process exited before becoming ready%s" % detail)
+    command_args = process.args
+    if isinstance(command_args, (str, bytes)):
+        command_args = [os.fsdecode(command_args)]
+    else:
+        command_args = [os.fsdecode(argument) for argument in command_args]
+    command_line = marker.get("command_line") or " ".join(command_args)
     if str(datadir) not in command_line or str(port) not in command_line:
         raise RuntimeError("the live database PID does not match its owned data directory and port")
-    if backend == "mariadb" and "maria" not in Path(marker.get("executable", "")).name.lower():
+    executable = marker.get("executable") or (command_args[0] if command_args else "")
+    if backend == "mariadb" and "maria" not in Path(executable).name.lower():
         raise RuntimeError("the live PID executable is not the expected MariaDB daemon")
-    if backend == "postgresql" and Path(marker.get("executable", "")).name != "postgres":
+    if backend == "postgresql" and Path(executable).name != "postgres":
         raise RuntimeError("the live PID executable is not the expected PostgreSQL daemon")
+    marker["command_line"] = command_line
+    marker["executable"] = executable
     return marker
 
 
@@ -505,10 +515,11 @@ class LocalDatabase:
         deadline = time.monotonic() + MAX_DATABASE_START_SECONDS
         while time.monotonic() < deadline:
             raise_if_interrupted()
-            if self.process.poll() is not None:
+            return_code = self.process.poll()
+            if return_code is not None:
                 raise RuntimeError(
-                    "%s daemon exited during startup; see its owned log"
-                    % self.backend
+                    "%s daemon exited during startup with return code %s; see its owned log"
+                    % (self.backend, return_code)
                 )
             process_is_our_database(self.process, self.backend, self.datadir, self.port)
             try:
