@@ -6,10 +6,21 @@
   },
   "userenvs": [
     {
-      "name": "alma9",
+      "name": "default",
       "requirements": [
         "hammerdb_runtime_packages",
         "hammerdb_v6_release"
+      ]
+    },
+    {
+      "name": [
+        "alma8",
+        "rhubi8"
+      ],
+      "requirements": [
+        "hammerdb_runtime_packages",
+        "hammerdb_python312_default",
+        "hammerdb_v5_release"
       ]
     }
   ],
@@ -19,7 +30,6 @@
       "type": "distro",
       "distro_info": {
         "packages": [
-          "coreutils",
           "curl",
           "mariadb-server",
           "mariadb-connector-c",
@@ -34,11 +44,46 @@
       }
     },
     {
+      "name": "hammerdb_python312_default",
+      "type": "manual",
+      "manual_info": {
+        "commands": [
+          "alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 312",
+          "alternatives --set python3 /usr/bin/python3.12"
+        ]
+      }
+    },
+    {
+      "name": "hammerdb_v5_release",
+      "type": "manual",
+      "manual_info": {
+        "commands": [
+          "set -eu; printf 'HammerDB v5.0: create download directory\\n'; temp_dir=$(mktemp -d /tmp/hammerdb-v5.XXXXXX); printf 'Retained on failure at: %s\\n' \"$temp_dir\"; printf '%s\\n' \"$temp_dir\" > /tmp/hammerdb-v5-download-path",
+          "set -eu; printf 'HammerDB v5.0: download RHEL 8 archive\\n'; temp_dir=$(cat /tmp/hammerdb-v5-download-path); curl --fail --location --silent --show-error --output \"$temp_dir/hammerdb-5.0-prod-lin-rhel8.tar.gz\" \"https://github.com/TPC-Council/HammerDB/releases/download/v5.0/hammerdb-5.0-prod-lin-rhel8.tar.gz\"",
+          "set -eu; printf 'HammerDB v5.0: verify published SHA-1\\n'; temp_dir=$(cat /tmp/hammerdb-v5-download-path); printf '%s  %s\\n' \"f2d6a8026fa3ed6e3e427d30b79ec738abd53848\" \"$temp_dir/hammerdb-5.0-prod-lin-rhel8.tar.gz\" | sha1sum --check --status",
+          "set -eu; printf 'HammerDB v5.0: verify pinned SHA-256\\n'; temp_dir=$(cat /tmp/hammerdb-v5-download-path); printf '%s  %s\\n' \"e547d11faaeec54b721cd661683a020c241f4474f11ece8803564cb17abd86d3\" \"$temp_dir/hammerdb-5.0-prod-lin-rhel8.tar.gz\" | sha256sum --check --status",
+          "set -eu; printf 'HammerDB v5.0: extract release\\n'; temp_dir=$(cat /tmp/hammerdb-v5-download-path); mkdir -p /opt/crucible/software; tar -xzf \"$temp_dir/hammerdb-5.0-prod-lin-rhel8.tar.gz\" -C /opt/crucible/software",
+          "set -eu; printf 'HammerDB v5.0: verify CLI\\n'; test -x /opt/crucible/software/HammerDB-5.0/hammerdbcli",
+          "set -eu; printf 'HammerDB v5.0: verify license\\n'; test -f /opt/crucible/software/HammerDB-5.0/LICENSE",
+          "set -eu; printf 'HammerDB v5.0: select active release\\n'; ln -sfn HammerDB-5.0 /opt/crucible/software/HammerDB",
+          "set -eu; printf 'HammerDB v5.0: remove successful download temp directory\\n'; temp_dir=$(cat /tmp/hammerdb-v5-download-path); rm -rf \"$temp_dir\" /tmp/hammerdb-v5-download-path"
+        ]
+      }
+    },
+    {
       "name": "hammerdb_v6_release",
       "type": "manual",
       "manual_info": {
         "commands": [
-          "set -eu; temp_dir=$(mktemp -d /tmp/hammerdb-v6.XXXXXX); trap 'rm -rf \"$temp_dir\"' EXIT; case \"$(uname -m)\" in x86_64) archive=HammerDB-6.0-Prod-Lin-RHEL9.tar.gz; url=https://github.com/TPC-Council/HammerDB/releases/download/v6.0/HammerDB-6.0-Prod-Lin-RHEL9.tar.gz; sha256=b4e0b1c84f9ac74802c86628b3ebca527ef314404be68827fca30174147a92b6 ;; aarch64) archive=HammerDB-6.0-Prod-Lin-RHEL9-ARM64.tar.gz; url=https://github.com/TPC-Council/HammerDB/releases/download/v6.0/HammerDB-6.0-Prod-Lin-RHEL9-ARM64.tar.gz; sha256=6f6687ff3f9545dee2a1d2844a236a6df71a446621f750dad66dfd828ea5a4c9 ;; *) echo 'Unsupported HammerDB architecture' >&2; exit 1 ;; esac; curl --fail --location --silent --show-error --output \"$temp_dir/$archive\" \"$url\"; printf '%s  %s\\n' \"$sha256\" \"$temp_dir/$archive\" | sha256sum --check --status; mkdir -p /opt/crucible/software; tar -xzf \"$temp_dir/$archive\" -C /opt/crucible/software; test -x /opt/crucible/software/HammerDB-6.0/hammerdbcli; test -f /opt/crucible/software/HammerDB-6.0/LICENSE"
+          "set -eu; printf 'HammerDB v6.0: create download directory\\n'; temp_dir=$(mktemp -d /tmp/hammerdb-v6.XXXXXX); printf 'Retained on failure at: %s\\n' \"$temp_dir\"; printf '%s\\n' \"$temp_dir\" > /tmp/hammerdb-v6-download-path",
+          "set -eu; printf 'HammerDB v6.0: select archive for architecture\\n'; temp_dir=$(cat /tmp/hammerdb-v6-download-path); case \"$(uname -m)\" in x86_64) archive=HammerDB-6.0-Prod-Lin-RHEL9.tar.gz; url=https://github.com/TPC-Council/HammerDB/releases/download/v6.0/HammerDB-6.0-Prod-Lin-RHEL9.tar.gz; sha256=b4e0b1c84f9ac74802c86628b3ebca527ef314404be68827fca30174147a92b6 ;; aarch64) archive=HammerDB-6.0-Prod-Lin-RHEL9-ARM64.tar.gz; url=https://github.com/TPC-Council/HammerDB/releases/download/v6.0/HammerDB-6.0-Prod-Lin-RHEL9-ARM64.tar.gz; sha256=6f6687ff3f9545dee2a1d2844a236a6df71a446621f750dad66dfd828ea5a4c9 ;; *) echo 'Unsupported HammerDB architecture' >&2; exit 1 ;; esac; printf '%s\\n' \"$archive\" > \"$temp_dir/archive\"; printf '%s\\n' \"$url\" > \"$temp_dir/url\"; printf '%s\\n' \"$sha256\" > \"$temp_dir/sha256\"; printf 'Selected archive: %s\\n' \"$archive\"",
+          "set -eu; printf 'HammerDB v6.0: download selected archive\\n'; temp_dir=$(cat /tmp/hammerdb-v6-download-path); archive=$(cat \"$temp_dir/archive\"); url=$(cat \"$temp_dir/url\"); curl --fail --location --silent --show-error --output \"$temp_dir/$archive\" \"$url\"",
+          "set -eu; printf 'HammerDB v6.0: verify SHA-256\\n'; temp_dir=$(cat /tmp/hammerdb-v6-download-path); archive=$(cat \"$temp_dir/archive\"); sha256=$(cat \"$temp_dir/sha256\"); printf '%s  %s\\n' \"$sha256\" \"$temp_dir/$archive\" | sha256sum --check --status",
+          "set -eu; printf 'HammerDB v6.0: extract release\\n'; temp_dir=$(cat /tmp/hammerdb-v6-download-path); archive=$(cat \"$temp_dir/archive\"); mkdir -p /opt/crucible/software; tar -xzf \"$temp_dir/$archive\" -C /opt/crucible/software",
+          "set -eu; printf 'HammerDB v6.0: verify CLI\\n'; test -x /opt/crucible/software/HammerDB-6.0/hammerdbcli",
+          "set -eu; printf 'HammerDB v6.0: verify license\\n'; test -f /opt/crucible/software/HammerDB-6.0/LICENSE",
+          "set -eu; printf 'HammerDB v6.0: select active release\\n'; ln -sfn HammerDB-6.0 /opt/crucible/software/HammerDB",
+          "set -eu; printf 'HammerDB v6.0: remove successful download temp directory\\n'; temp_dir=$(cat /tmp/hammerdb-v6-download-path); rm -rf \"$temp_dir\" /tmp/hammerdb-v6-download-path"
         ]
       }
     }

@@ -8,8 +8,7 @@ import sys
 from pathlib import Path
 
 from hammerdb_common import (
-    HAMMERDB_COMMIT,
-    HAMMERDB_VERSION,
+    HAMMERDB_RELEASES,
     engine_id_from_label,
     measurement_interval,
     parse_cli,
@@ -44,9 +43,14 @@ def validate_outputs(
     upstream = manifest.get("upstream")
     if not isinstance(upstream, dict):
         raise ValueError("HammerDB manifest has no upstream provenance")
-    if upstream.get("hammerdb_version") != HAMMERDB_VERSION or upstream.get("hammerdb_commit") != HAMMERDB_COMMIT:
+    release_version = upstream.get("hammerdb_version")
+    release = HAMMERDB_RELEASES.get(release_version)
+    if not isinstance(release, dict) or upstream.get("hammerdb_commit") != release["commit"]:
         raise ValueError("HammerDB manifest has a different upstream pin")
-    if upstream.get("cli_version_check") != "HammerDB CLI v6.0":
+    architecture = upstream.get("architecture")
+    if upstream.get("archive_sha256") != release["tarball_sha256"].get(architecture):
+        raise ValueError("HammerDB manifest has a different upstream archive pin")
+    if upstream.get("cli_version_check") != "HammerDB CLI v%s" % release_version:
         raise ValueError("HammerDB manifest does not contain a successful CLI version check")
 
     if engine_label is None:
@@ -97,7 +101,7 @@ def validate_outputs(
         raise ValueError("HammerDB native schema build or check did not complete successfully")
     if database.get("schema_ready") is not True:
         raise ValueError("HammerDB schema was not marked ready before measurement")
-    if database.get("schema_build_status") != "native v6 TPROC-C schema marker and single schema VU succeeded":
+    if database.get("schema_build_status") != "native TPROC-C schema marker and single schema VU succeeded":
         raise ValueError("HammerDB manifest lacks native schema-build success evidence")
     if database.get("schema_check_status") != "native TPROC-C schema and consistency checks succeeded":
         raise ValueError("HammerDB manifest lacks native schema-check success evidence")

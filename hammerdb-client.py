@@ -213,6 +213,29 @@ def require_executable(name):
     return Path(value).resolve()
 
 
+def require_executable_any(*names):
+    for name in names:
+        value = shutil.which(name)
+        if value:
+            return Path(value).resolve(), name
+        libexec_path = Path("/usr/libexec") / name
+        if libexec_path.is_file() and os.access(libexec_path, os.X_OK):
+            return libexec_path.resolve(), name
+    raise RuntimeError("required prepared executable is missing: %s" % " or ".join(names))
+
+
+def mariadb_install_command(installer, installer_name, defaults_file, datadir):
+    command = [
+        str(installer),
+        "--defaults-file=%s" % defaults_file,
+        "--datadir=%s" % datadir,
+    ]
+    if installer_name == "mariadb-install-db":
+        command.append("--auth-root-authentication-method=normal")
+    command.append("--skip-test-db")
+    return command
+
+
 def require_service_account(name):
     try:
         account = pwd.getpwnam(name)
@@ -254,7 +277,7 @@ def process_is_our_database(process, backend, datadir, port):
     if str(datadir) not in command_line or str(port) not in command_line:
         raise RuntimeError("the live database PID does not match its owned data directory and port")
     executable = marker.get("executable") or (command_args[0] if command_args else "")
-    if backend == "mariadb" and "maria" not in Path(executable).name.lower():
+    if backend == "mariadb" and Path(executable).name.lower() not in ("mariadbd", "mysqld"):
         raise RuntimeError("the live PID executable is not the expected MariaDB daemon")
     if backend == "postgresql" and Path(executable).name != "postgres":
         raise RuntimeError("the live PID executable is not the expected PostgreSQL daemon")
@@ -399,8 +422,8 @@ class LocalDatabase:
         return self.process
 
     def _start_mariadb(self):
-        installer = require_executable("mariadb-install-db")
-        daemon = require_executable("mariadbd")
+        installer, installer_name = require_executable_any("mariadb-install-db", "mysql_install_db")
+        daemon, _ = require_executable_any("mariadbd", "mysqld")
         if len(os.fsencode(self.socket_path)) > 100:
             raise RuntimeError("MariaDB socket path is too long; select a shorter data mount path")
         self.mysql_server_defaults_path.write_text(
@@ -414,13 +437,12 @@ class LocalDatabase:
             self.service_account.pw_gid,
         )
         os.chmod(self.mysql_server_defaults_path, 0o600)
-        init_command = [
-            str(installer),
-            "--defaults-file=%s" % self.mysql_server_defaults_path,
-            "--datadir=%s" % self.datadir,
-            "--auth-root-authentication-method=normal",
-            "--skip-test-db",
-        ]
+        init_command = mariadb_install_command(
+            installer,
+            installer_name,
+            self.mysql_server_defaults_path,
+            self.datadir,
+        )
         run_command(
             init_command,
             MAX_DATABASE_START_SECONDS,
@@ -525,7 +547,7 @@ class LocalDatabase:
             try:
                 if self.backend == "mariadb":
                     command = [
-                        require_executable("mariadb-admin"),
+                        require_executable_any("mariadb-admin", "mysqladmin")[0],
                         "--no-defaults",
                         "--connect-timeout=2",
                         "--protocol=socket",
@@ -571,7 +593,7 @@ class LocalDatabase:
                 "FLUSH PRIVILEGES;\n" % (user, password, user)
             )
             command = [
-                require_executable("mariadb"),
+                require_executable_any("mariadb", "mysql")[0],
                 "--no-defaults",
                 "--protocol=socket",
                 "--socket=%s" % self.socket_path,
@@ -641,7 +663,7 @@ class LocalDatabase:
     def _wait_for_benchmark_login(self):
         if self.backend == "mariadb":
             command = [
-                require_executable("mariadb"),
+                require_executable_any("mariadb", "mysql")[0],
                 "--defaults-file=%s" % self.mysql_defaults_path,
                 "--batch",
                 "--skip-column-names",
@@ -681,7 +703,7 @@ class LocalDatabase:
     def verify_warehouse_count(self, expected):
         if self.backend == "mariadb":
             command = [
-                require_executable("mariadb"),
+                require_executable_any("mariadb", "mysql")[0],
                 "--defaults-file=%s" % self.mysql_defaults_path,
                 "--batch",
                 "--skip-column-names",
@@ -719,7 +741,7 @@ class LocalDatabase:
     def _verify_transaction_log_location(self):
         if self.backend == "mariadb":
             command = [
-                require_executable("mariadb"),
+                require_executable_any("mariadb", "mysql")[0],
                 "--no-defaults",
                 "--protocol=socket",
                 "--socket=%s" % self.socket_path,
@@ -916,7 +938,7 @@ def run_hammerdb(args, database, tmpdir, secrets_to_redact, mode):
     os.chmod(script_path, 0o600)
     cli = HAMMERDB_CLI
     if not cli.is_file() or not os.access(cli, os.X_OK):
-        raise RuntimeError("prepared HammerDB v6.0 CLI is missing: %s" % cli)
+        raise RuntimeError("prepared HammerDB v%s CLI is missing: %s" % (HAMMERDB_VERSION, cli))
 
     environment = database.hammerdb_environment()
     environment["TMP"] = str(tmpdir)
@@ -1345,7 +1367,7 @@ def execute_sample(argv):
             value["scope"] = "mechanics-temp" if selected == "." else "explicit-engine-mount"
             value["parity_claimed"] = False
         if not HAMMERDB_HOME.is_dir() or not HAMMERDB_CLI.is_file():
-            raise RuntimeError("HammerDB v6.0 is not installed at the pinned Workshop path")
+            raise RuntimeError("HammerDB v%s is not installed at the pinned Workshop path" % HAMMERDB_VERSION)
         if not (HAMMERDB_HOME / "LICENSE").is_file():
             raise RuntimeError("the prepared HammerDB installation is missing its GPL license")
         if os.uname().machine not in HAMMERDB_TARBALL_SHA256:
@@ -1413,9 +1435,12 @@ def execute_sample(argv):
             },
             cwd=HAMMERDB_HOME,
         )
-        if "HammerDB CLI v6.0" not in cli_version:
-            raise RuntimeError("the installed HammerDB CLI does not identify itself as version 6.0")
-        manifest["upstream"]["cli_version_check"] = "HammerDB CLI v6.0"
+        expected_cli_version = "HammerDB CLI v%s" % HAMMERDB_VERSION
+        if expected_cli_version not in cli_version:
+            raise RuntimeError(
+                "the installed HammerDB CLI does not identify itself as version %s" % HAMMERDB_VERSION
+            )
+        manifest["upstream"]["cli_version_check"] = expected_cli_version
 
         database_info = database.start()
         manifest["database"] = database_info
@@ -1425,7 +1450,7 @@ def execute_sample(argv):
         build = run_hammerdb(args, database, tmpdir, secret_values, "schema-build")
         _copy_artifact(build["output_path"], cwd / "hammerdb-schema-build.txt", secret_values)
         manifest["database"]["schema_build_return_code"] = build["return_code"]
-        manifest["database"]["schema_build_status"] = "native v6 TPROC-C schema marker and single schema VU succeeded"
+        manifest["database"]["schema_build_status"] = "native TPROC-C schema marker and single schema VU succeeded"
 
         check = run_hammerdb(args, database, tmpdir, secret_values, "schema-check")
         _copy_artifact(check["output_path"], cwd / "hammerdb-schema-check.txt", secret_values)

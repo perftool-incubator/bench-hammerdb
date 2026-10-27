@@ -2,7 +2,7 @@ import importlib.util
 import unittest
 from pathlib import Path
 
-from hammerdb_common import HAMMERDB_COMMIT, HAMMERDB_VERSION, measurement_interval, parse_native_output
+from hammerdb_common import HAMMERDB_COMMIT, HAMMERDB_RELEASES, HAMMERDB_VERSION, measurement_interval, parse_native_output
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -48,7 +48,7 @@ def valid_manifest():
         "upstream": {
             "hammerdb_version": HAMMERDB_VERSION,
             "hammerdb_commit": HAMMERDB_COMMIT,
-            "cli_version_check": "HammerDB CLI v6.0",
+            "cli_version_check": "HammerDB CLI v%s" % HAMMERDB_VERSION,
         },
         "requested": {
             "backend": "mariadb",
@@ -67,7 +67,7 @@ def valid_manifest():
             "timed_run_return_code": 0,
             "schema_build_return_code": 0,
             "schema_check_return_code": 0,
-            "schema_build_status": "native v6 TPROC-C schema marker and single schema VU succeeded",
+            "schema_build_status": "native TPROC-C schema marker and single schema VU succeeded",
             "schema_check_status": "native TPROC-C schema and consistency checks succeeded",
             "schema_ready": True,
             "warehouse_count": 1,
@@ -122,6 +122,22 @@ class HammerDBPostProcessTests(unittest.TestCase):
         result = validate()
         self.assertEqual(result["native"]["nopm"], 1234.5)
         self.assertEqual(result["backend"], "mariadb")
+
+    def test_el8_hammerdb_release_is_validated_without_controller_install(self):
+        manifest = valid_manifest()
+        release = HAMMERDB_RELEASES["5.0"]
+        manifest["upstream"].update(
+            {
+                "hammerdb_version": "5.0",
+                "hammerdb_commit": release["commit"],
+                "cli_version_check": "HammerDB CLI v5.0",
+                "architecture": "x86_64",
+                "archive_sha256": release["tarball_sha256"]["x86_64"],
+            }
+        )
+
+        result = validate(manifest=manifest)
+        self.assertEqual(result["native"]["nopm"], 1234.5)
 
     def test_iteration_parameters_must_match_the_run_manifest(self):
         mismatch = post_process.parse_cli(

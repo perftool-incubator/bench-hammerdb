@@ -19,6 +19,38 @@ SPEC.loader.exec_module(adapter)
 
 
 class HammerDBAdapterTests(unittest.TestCase):
+    def test_legacy_mariadb_tools_are_selected_when_modern_names_are_missing(self):
+        paths = {"mysql_install_db": "/usr/bin/mysql_install_db", "mysqld": "/usr/sbin/mysqld"}
+        with mock.patch.object(adapter.shutil, "which", side_effect=lambda name: paths.get(name)):
+            installer, installer_name = adapter.require_executable_any(
+                "mariadb-install-db", "mysql_install_db"
+            )
+            daemon, daemon_name = adapter.require_executable_any("mariadbd", "mysqld")
+
+        self.assertEqual(installer_name, "mysql_install_db")
+        self.assertEqual(daemon_name, "mysqld")
+        command = adapter.mariadb_install_command(installer, installer_name, "/private/server.cnf", "/private/data")
+        self.assertNotIn("--auth-root-authentication-method=normal", command)
+        self.assertIn("--skip-test-db", command)
+
+    def test_modern_mariadb_tools_keep_explicit_root_authentication(self):
+        command = adapter.mariadb_install_command(
+            Path("/usr/bin/mariadb-install-db"),
+            "mariadb-install-db",
+            "/private/server.cnf",
+            "/private/data",
+        )
+        self.assertIn("--auth-root-authentication-method=normal", command)
+
+    def test_mariadb_server_is_found_in_libexec(self):
+        with mock.patch.object(adapter.shutil, "which", return_value=None):
+            with mock.patch.object(Path, "is_file", return_value=True):
+                with mock.patch.object(adapter.os, "access", return_value=True):
+                    executable, name = adapter.require_executable_any("mariadbd", "mysqld")
+
+        self.assertEqual(executable, Path("/usr/libexec/mariadbd").resolve())
+        self.assertEqual(name, "mariadbd")
+
     def test_generated_tcl_braces_values_and_rejects_tcl_structure(self):
         args = type("Args", (), {"warehouses": 1, "virtual_users": 2, "rampup_minutes": 1, "duration_minutes": 1})()
         parameters = {
@@ -128,6 +160,29 @@ class HammerDBAdapterTests(unittest.TestCase):
         self.assertEqual(marker["command_line"], " ".join(OwnedProcess.args))
         self.assertEqual(marker["executable"], "/usr/sbin/mariadbd")
         self.assertIn("PermissionError", marker["proc_inspection_error"])
+
+    def test_legacy_mysqld_name_is_accepted_for_mariadb(self):
+        class LegacyMariaDBProcess:
+            pid = os.getpid()
+            args = [
+                "/usr/libexec/mysqld",
+                "--datadir=/tmp/hammerdb-private/database",
+                "--port=40004",
+            ]
+
+            def poll(self):
+                return None
+
+        with mock.patch.object(adapter.Path, "read_bytes", side_effect=PermissionError):
+            marker = adapter.process_is_our_database(
+                LegacyMariaDBProcess(),
+                "mariadb",
+                "/tmp/hammerdb-private/database",
+                40004,
+            )
+
+        self.assertTrue(marker["alive"])
+        self.assertEqual(marker["executable"], "/usr/libexec/mysqld")
 
     def test_exited_database_process_records_return_code(self):
         class ExitedProcess:

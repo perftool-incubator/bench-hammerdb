@@ -4,7 +4,7 @@ Client-only HammerDB TPROC-C benchmark for the [Crucible](https://github.com/per
 
 This project adds a client-only HammerDB subproject for native TPROC-C runs against a private MariaDB or PostgreSQL instance started inside the same Crucible client engine. It has no server role and does not require a pre-existing database service.
 
-The initial Workshop target is the `alma9` userenv. HammerDB's official v6.0 RHEL 9 x86_64 and aarch64 release archives are selected by architecture and SHA-256 checked before installation. The pinned tag commit is [`d33f879aec858063edd17aa2daa46db03abb2bae`](https://github.com/TPC-Council/HammerDB/tree/d33f879aec858063edd17aa2daa46db03abb2bae). The full upstream GPL-3.0 text is included at [third-party/HammerDB-GPL-3.0.txt](third-party/HammerDB-GPL-3.0.txt); the adapter is Apache-2.0 licensed.
+Workshop provides common requirements through the `default` userenv profile, which installs HammerDB 6.0's official RHEL 9 x86_64 or aarch64 archive according to architecture. AlmaLinux 8 and RHUI 8 select HammerDB 5.0's official RHEL 8 x86_64 archive and Python 3.12: the HammerDB 6.0 RHEL 9 binary requires a newer GLIBC than EL8 provides, and EL8's system `python3` is too old for the adapter's assignment expressions. Both releases are pinned by upstream commit and verified archive checksums before installation. The full upstream GPL-3.0 text is included at [third-party/HammerDB-GPL-3.0.txt](third-party/HammerDB-GPL-3.0.txt); the adapter is Apache-2.0 licensed.
 
 Workshop installs MariaDB and PostgreSQL server/client packages into the engine image. At runtime the adapter starts the selected daemon directly under its packaged service account, binds it to loopback on an engine-specific port, creates a fresh private database, checks the HammerDB driver and schema, runs the timed workload, stops its owned process group, and removes its private database files. The port preflight tolerates completed connections in TCP `TIME_WAIT` while rejecting a live listener; a startup bind race remains a hard failure, and the adapter never attaches to an existing database. It does not call systemd or change SELinux, tuned profiles, host disks, or caller-owned mount roots.
 
@@ -27,6 +27,8 @@ The `defaults` preset applies these defaults when no parameter set is supplied. 
 ## Storage contract
 
 `--data-dir=.` and `--log-dir=.` create a fresh owned mechanics scratch root under `/tmp`. Rickshaw creates each sample directory with mode 0700, so the provisioned database service accounts cannot traverse it. The adapter records the actual scratch path and visible backing mount, source, filesystem, device and free bytes. The private database files are removed after the owned daemon stops. This default supports mechanics checks; it does not establish storage parity with any database disk.
+
+For one warehouse, preflight reserves 1,792 MiB for database files and 128 MiB for MariaDB redo, or 2,048 MiB for PostgreSQL WAL. When data and log paths share a filesystem, free space must meet their combined requirement: 1,920 MiB for MariaDB or 3,840 MiB for PostgreSQL. Separate filesystems must meet each path's requirement independently.
 
 For storage measurements, mount dedicated writable directories into the client engine and pass each exact mountpoint as an absolute parameter. Paths use ASCII letters, digits, slash, dot, underscore, and hyphen so Rickshaw can pass the same selection safely to post-processing. `examples/hammerdb.remotehosts.json` shows the layout with placeholder host paths. The adapter creates one unique owned child under each selected root. It never changes the root's ownership or permissions and never removes the root.
 
@@ -68,14 +70,14 @@ Each backend used a distinct data path and transaction-log path on the same XFS 
 
 Separate MariaDB and PostgreSQL SIGTERM trials interrupted the adapter after each native timed workload had started. Both produced invalid samples with no score, measurement timestamps, measurement period, or indexed metric documents. In each trial the harness client-start-end roadblock returned code 4. Independent review confirmed the adapter's observed owned process groups and data/log children were removed while the caller-owned mount roots remained empty and unchanged. These trials cover adapter SIGTERM handling in both backends; they do not cover controller cancellation or SIGINT.
 
-The runtime tests exercised one prepared Alma 9 x86_64 environment. ARM, broader CI, concurrent clients, controller cancellation, SIGINT, and a normal published installation remain untested. The measurements are mechanics evidence, not audited TPC-C scores or production-performance claims. The runtime hashes reviewed in the mounted matrix are those of tree `d529cde0…`; the trial-evidence edits in this file and [VALIDATION.md](VALIDATION.md) change documentation only.
+The detailed two-backend, multi-sample matrix exercised Alma 9 x86_64. A separate one-sample MariaDB compatibility smoke completed on all ten tested x86_64 userenvs: HammerDB 6.0 on the eight EL9/newer profiles and HammerDB 5.0 on Alma 8 and RHUI 8. ARM, broader CI, concurrent clients, controller cancellation, SIGINT, and a normal published installation remain untested. The measurements are mechanics evidence, not audited TPC-C scores or production-performance claims. See [VALIDATION.md](VALIDATION.md) for the profile-level evidence and limits.
 
 ## Project files
 
 - [hammerdb_common.py](hammerdb_common.py) defines parameter, resource, storage, native-output and measurement-window contracts.
 - [hammerdb-client.py](hammerdb-client.py) owns the per-sample database and HammerDB lifecycle.
 - [hammerdb-post-process.py](hammerdb-post-process.py) revalidates the retained timed and schema output against the manifest and current Rickshaw engine identity before writing NOPM and backend-specific TPM CDM samples.
-- [workshop.json](workshop.json) provisions the pinned HammerDB release and MariaDB/PostgreSQL packages into `alma9`.
+- [workshop.json](workshop.json) provisions HammerDB 6.0 for the default profile and HammerDB 5.0 for AlmaLinux 8 and RHUI 8, with Python 3.12 selected for EL8.
 - [rickshaw.json](rickshaw.json), [multiplex.json](multiplex.json) and [benchmark-metadata.json](benchmark-metadata.json) define the run integration and indexed output.
 - [DEPENDENCY-DESIGN.md](DEPENDENCY-DESIGN.md) records the upstream pin, license, storage policy and lifecycle decisions.
 - [VALIDATION.md](VALIDATION.md) records the exact checks run and their limits.
