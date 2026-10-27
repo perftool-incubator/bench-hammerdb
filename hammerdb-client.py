@@ -278,7 +278,9 @@ def process_is_our_database(process, backend, datadir, port):
         raise RuntimeError("the live database PID does not match its owned data directory and port")
     executable = marker.get("executable") or (command_args[0] if command_args else "")
     if backend == "mariadb" and Path(executable).name.lower() not in ("mariadbd", "mysqld"):
-        raise RuntimeError("the live PID executable is not the expected MariaDB daemon")
+        raise RuntimeError(
+            "the live PID executable is not the expected MariaDB daemon: %r" % executable
+        )
     if backend == "postgresql" and Path(executable).name != "postgres":
         raise RuntimeError("the live PID executable is not the expected PostgreSQL daemon")
     marker["command_line"] = command_line

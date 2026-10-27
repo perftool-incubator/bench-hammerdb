@@ -681,9 +681,14 @@ def process_marker(process):
     marker = {"pid": pid, "alive": return_code is None}
     if return_code is not None:
         marker["return_code"] = return_code
+    executable_path = "/proc/%d/exe" % pid
     try:
         cmdline = Path("/proc/%d/cmdline" % pid).read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
-        executable = os.path.realpath("/proc/%d/exe" % pid)
+        # realpath() can return the unresolved /proc link without raising when
+        # access is restricted, which looks like an unexpected executable to
+        # callers. Read the link explicitly so the existing fallback to Popen
+        # metadata handles that case.
+        executable = os.path.realpath(os.readlink(executable_path))
     except OSError as exc:
         # /proc access can be restricted when this process supervises a
         # database running as its service account. The Popen handle remains
