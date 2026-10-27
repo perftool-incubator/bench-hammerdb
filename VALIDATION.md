@@ -4,20 +4,21 @@ This file is updated with observed evidence. A planned procedure is not counted 
 
 ## Static checks
 
-- `python3 -m unittest discover -s tests -v`: 24 focused adapter, parameter, storage, native-output, measurement, backend-aware schema-gate, process-group cleanup, stdout-supervision and post-processing tests passed.
+- `python3 -m unittest discover -s tests -v`: 34 focused adapter, parameter, storage, native-output, measurement, EL8 MariaDB compatibility, backend-aware schema-gate, process-group cleanup, stdout-supervision and release-aware post-processing tests passed.
 - Port-probe regression tests created an actual loopback `TIME_WAIT` entry and confirmed it is reusable; live listeners bound to `127.0.0.1` or `0.0.0.0` are rejected with `SO_REUSEADDR` both enabled and disabled.
-- `python3 -m py_compile` for the shared module, client, runtime estimator, postprocessor and tests passed.
+- `python3 -m py_compile` for the shared module, client, postprocessor and tests passed.
 - `bash -n hammerdb-base hammerdb-client` passed.
 - JSON parsing passed for Rickshaw, Multiplex, Workshop, benchmark metadata and the example run file; all five passed Draft 7 validation against the local Crucible schemas.
 - `git diff --check` passed.
-- The Workshop manual-install command passed `bash -n`; its decoded `printf` checksum formatter was exercised with sample values and emitted a final newline byte.
+- All 20 Workshop manual command entries passed `bash -n`: 18 HammerDB release steps plus the two EL8 Python-alternative commands. The decoded checksum formatter was exercised with sample values and emitted a final newline byte.
 
 ## Native HammerDB packaging checks
 
 - The downloaded official v6.0 RHEL 9 x86_64 archive matched SHA-256 `b4e0b1c84f9ac74802c86628b3ebca527ef314404be68827fca30174147a92b6`.
+- The official v5.0 RHEL 8 x86_64 archive matched its published SHA-1 and the locally pinned SHA-256 before its Alma 8 and RHUI 8 runs.
 - The packaged HammerDB v6.0 CLI identified itself correctly. `dbset`/`diset`/`loadscript` generated MariaDB and PostgreSQL workload scripts with private TMP/HOME directories and no database connection. This proves script-generation compatibility only.
 - Explicit `package require mariatcl` and `package require Pgtcl` checks failed on this development host because its dynamic linker lacks `libmariadb.so.3` and `libpq.so.5`. The corrected mounted trial subsequently passed actual selected-package loading for all eight samples in the prepared Alma 9 userenv, along with live database connectivity. This confirms the pinned clients and provisioned libraries work in that target image.
-- The successful target run exercised the prepared Alma 9 userenv. It does not establish a normal published installation or behavior on other architectures and base images.
+- The detailed mounted trial exercised the prepared Alma 9 userenv; the separate ten-profile smoke evidence is recorded below. Neither establishes a normal published installation or behavior on other architectures.
 
 ## Corrected mounted matrix
 
@@ -38,6 +39,38 @@ The trial used distinct data and transaction-log paths that resolved to the same
 
 The pre-fix run also showed that a controller exit code of zero and `partial=false` do not prove every requested sample succeeded: failed iterations can be omitted from ordinary summaries and indexed metrics. Acceptance therefore compared expected iteration/sample counts with retained native artifacts and indexed documents.
 
+## Broader userenv compatibility smoke runs
+
+The same remotehosts endpoint configuration used for the bench-stream, bench-coremark and bench-phpbench expansion was used for one MariaDB sample per profile. Each run used x86_64, one warehouse, two workload VUs, one minute of ramp-up, one minute of measurement, and the mechanics-only `data-dir=.` / `log-dir=.` defaults, with CPU partitioning disabled. All ten Crucible runs exited successfully, produced a valid 60-second NOPM period, and indexed their results.
+
+HammerDB 6.0 passed on the eight default-profile userenvs. Its official RHEL 9 binary could not start on EL8 because the required GLIBC versions are not available there. Alma 8 and RHUI 8 therefore select the official HammerDB 5.0 RHEL 8 build; both passed the same end-to-end smoke path, including post-processing and indexing. The version split is per profile; HammerDB was not downleveled across the matrix.
+
+| Userenv | HammerDB | Run ID | NOPM |
+| --- | --- | --- | ---: |
+| alma8 | 5.0 | `ce0d5027-d17b-4b53-a9e3-0db907a86b43` | 9,040 |
+| alma9 | 6.0 | `8f696f3f-3c3e-4703-81ae-9b88970f8fc7` | 17,262 |
+| alma10 | 6.0 | `48b46770-209a-47a0-a738-6f0869979781` | 18,725 |
+| fedora43 | 6.0 | `b48f8541-c962-4f56-b9c0-bcc0f3a49349` | 18,420 |
+| fedora44 | 6.0 | `609dba04-b71a-4d98-b056-d9537ce517c9` | 17,522 |
+| rhubi8 | 5.0 | `9c0d29cd-0031-4a2c-8561-e42a18dec8b9` | 8,363 |
+| rhubi9 | 6.0 | `933b4fc5-6f67-4e01-b68c-d82fe7f16e5c` | 18,319 |
+| rhubi10 | 6.0 | `42f10f1f-e8ec-4b21-a0ae-ad093849978e` | 17,977 |
+| stream9 | 6.0 | `db8fa3db-808f-4577-8b1a-eaa01afb9930` | 17,447 |
+| stream10 | 6.0 | `ce2728cf-ac8b-416c-9010-a1e4938ef365` | 18,941 |
+
+These one-sample NOPM values confirm that each profile completed its workload and emitted an indexed result. They are not cross-userenv performance comparisons. The wider smoke runs used dot-default temporary storage and do not establish storage parity.
+
+### Workshop release-command recheck
+
+After splitting each release requirement into sequential, individually logged commands, the final Workshop stage rebuilt successfully for one EL8 and one EL9 profile. A marker file carries the temporary download path between shell invocations; failed commands leave that directory for inspection, while the final success step removes it. Both one-sample MariaDB runs used the same remotehosts endpoint and completed post-processing and OpenSearch indexing.
+
+| Userenv | HammerDB | Run ID | Measurement period | NOPM |
+| --- | --- | --- | ---: | ---: |
+| alma8 | 5.0 | `25652f95-8df0-4370-9d8c-e16ab8c207f1` | 60.057 s | 8,785 |
+| alma9 | 6.0 | `b354dfc4-4cc4-4186-aecc-cf091b6da0b3` | 60.053 s | 17,326 |
+
+These runs verify the successful Workshop install path and benchmark lifecycle for both releases. They did not force a requirement failure to inspect the preserved temporary directory.
+
 ## Adapter SIGTERM trials
 
 Dedicated MariaDB and PostgreSQL trials each sent SIGTERM after HammerDB emitted its timed counter-window start marker and workload-worker startup records. Neither run produced a score. Both adapters recorded `RunInterrupted`, marked the sample invalid and retained no measurement timestamps. In each run the harness's client-start-end roadblock reported `rc=4`, so the iteration was unsuccessful; no metric descriptors, metric data or measurement-period documents were indexed. This is the roadblock result, while HammerDB had not produced a final workload result.
@@ -46,4 +79,4 @@ Independent review confirmed all three observed owned process groups in each run
 
 ## Limits
 
-The evidence is limited to one prepared Alma 9 x86_64 environment and a one-warehouse mechanics workload. ARM, broader CI, concurrent clients, controller cancellation, SIGINT, and a normal published installation remain untested. Monitor timestamps are adapter receipt times for HammerDB counter-window messages; their possible arrival delay remains, and no strict independently observed setup/ramp-up boundary is claimed. The trial does not establish production performance or independent storage-device parity. The source hashes reviewed for the matrix identify runtime tree `d529cde07a87deb4637a45bfb25f15d039fb8c69`; this evidence update changes documentation only.
+The multi-sample, two-backend evidence remains specific to Alma 9 x86_64. The ten-profile smoke matrix establishes one-sample MariaDB compatibility on x86_64 only; ARM, broader CI, concurrent clients, controller cancellation, SIGINT, and a normal published installation remain untested. Monitor timestamps are adapter receipt times for HammerDB counter-window messages; their possible arrival delay remains, and no strict independently observed setup/ramp-up boundary is claimed. The trials do not establish production performance or independent storage-device parity. The source hashes reviewed for the earlier matrix identify runtime tree `d529cde07a87deb4637a45bfb25f15d039fb8c69`; the broader userenv support changes runtime and Workshop files as well as documentation.

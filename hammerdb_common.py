@@ -12,13 +12,43 @@ import time
 from pathlib import Path
 
 
-HAMMERDB_VERSION = "6.0"
-HAMMERDB_COMMIT = "d33f879aec858063edd17aa2daa46db03abb2bae"
-HAMMERDB_TARBALL_SHA256 = {
-    "x86_64": "b4e0b1c84f9ac74802c86628b3ebca527ef314404be68827fca30174147a92b6",
-    "aarch64": "6f6687ff3f9545dee2a1d2844a236a6df71a446621f750dad66dfd828ea5a4c9",
+HAMMERDB_RELEASES = {
+    "5.0": {
+        "commit": "22ded31bf47b2ffe25263d686c0fc630965cfb76",
+        "home": Path("/opt/crucible/software/HammerDB-5.0"),
+        "tarball_sha256": {
+            "x86_64": "e547d11faaeec54b721cd661683a020c241f4474f11ece8803564cb17abd86d3",
+        },
+    },
+    "6.0": {
+        "commit": "d33f879aec858063edd17aa2daa46db03abb2bae",
+        "home": Path("/opt/crucible/software/HammerDB-6.0"),
+        "tarball_sha256": {
+            "x86_64": "b4e0b1c84f9ac74802c86628b3ebca527ef314404be68827fca30174147a92b6",
+            "aarch64": "6f6687ff3f9545dee2a1d2844a236a6df71a446621f750dad66dfd828ea5a4c9",
+        },
+    },
 }
-HAMMERDB_HOME = Path("/opt/crucible/software/HammerDB-6.0")
+HAMMERDB_ACTIVE_HOME = Path("/opt/crucible/software/HammerDB")
+
+
+def _hammerdb_release_for_home(home):
+    candidate = Path(home)
+    for version, release in HAMMERDB_RELEASES.items():
+        if candidate == release["home"]:
+            return version, release
+    return "6.0", HAMMERDB_RELEASES["6.0"]
+
+
+try:
+    _hammerdb_active_home = HAMMERDB_ACTIVE_HOME.resolve(strict=True)
+except OSError:
+    _hammerdb_active_home = HAMMERDB_RELEASES["6.0"]["home"]
+
+HAMMERDB_VERSION, _HAMMERDB_RELEASE = _hammerdb_release_for_home(_hammerdb_active_home)
+HAMMERDB_COMMIT = _HAMMERDB_RELEASE["commit"]
+HAMMERDB_TARBALL_SHA256 = _HAMMERDB_RELEASE["tarball_sha256"]
+HAMMERDB_HOME = _HAMMERDB_RELEASE["home"]
 HAMMERDB_CLI = HAMMERDB_HOME / "hammerdbcli"
 
 DEFAULT_WAREHOUSES = 1
@@ -676,6 +706,10 @@ def process_marker(process):
 
 def database_version_command(backend):
     if backend == "mariadb":
+        for executable in ("mariadb", "mysql"):
+            path = shutil.which(executable)
+            if path:
+                return [path, "--version"]
         return ["mariadb", "--version"]
     return ["postgres", "--version"]
 

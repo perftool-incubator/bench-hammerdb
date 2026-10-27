@@ -6,7 +6,10 @@ from pathlib import Path
 from unittest import mock
 
 from hammerdb_common import (
+    HAMMERDB_RELEASES,
     HAMMERDB_TARBALL_SHA256,
+    _hammerdb_release_for_home,
+    database_version_command,
     database_port,
     engine_id_from_label,
     measurement_interval,
@@ -106,6 +109,24 @@ class HammerDBCommonTests(unittest.TestCase):
         self.assertEqual(set(HAMMERDB_TARBALL_SHA256), {"x86_64", "aarch64"})
         for digest in HAMMERDB_TARBALL_SHA256.values():
             self.assertRegex(digest, r"^[0-9a-f]{64}$")
+
+    def test_every_release_archive_hash_is_sha256_length(self):
+        for release in HAMMERDB_RELEASES.values():
+            for digest in release["tarball_sha256"].values():
+                self.assertRegex(digest, r"^[0-9a-f]{64}$")
+
+    def test_rhel8_profile_release_selects_hammerdb_5(self):
+        version, release = _hammerdb_release_for_home(HAMMERDB_RELEASES["5.0"]["home"])
+        self.assertEqual(version, "5.0")
+        self.assertEqual(release["commit"], "22ded31bf47b2ffe25263d686c0fc630965cfb76")
+        self.assertEqual(set(release["tarball_sha256"]), {"x86_64"})
+
+    def test_mariadb_version_command_falls_back_to_legacy_mysql_name(self):
+        with mock.patch(
+            "hammerdb_common.shutil.which",
+            side_effect=lambda name: "/usr/bin/mysql" if name == "mysql" else None,
+        ):
+            self.assertEqual(database_version_command("mariadb"), ["/usr/bin/mysql", "--version"])
 
     def test_native_result_is_validated_for_both_backends(self):
         mariadb = parse_native_output(native_output(), "mariadb", 1, 2, 0, 1)

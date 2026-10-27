@@ -2,11 +2,12 @@
 
 ## Upstream and license
 
-- HammerDB is provisioned from the official v6.0 RHEL 9 release assets. The v6.0 tag resolves to commit `d33f879aec858063edd17aa2daa46db03abb2bae`.
+- The default userenv profile uses the official HammerDB v6.0 RHEL 9 release assets. The v6.0 tag resolves to commit `d33f879aec858063edd17aa2daa46db03abb2bae`.
 - The x86_64 archive SHA-256 is `b4e0b1c84f9ac74802c86628b3ebca527ef314404be68827fca30174147a92b6`; the aarch64 archive SHA-256 is `6f6687ff3f9545dee2a1d2844a236a6df71a446621f750dad66dfd828ea5a4c9`.
-- Workshop selects the matching archive from `uname -m`, verifies its SHA-256, extracts it to `/opt/crucible/software/HammerDB-6.0`, and checks the CLI and `LICENSE` file exist. It does not rebuild or patch HammerDB.
+- AlmaLinux 8 and RHUI 8 use HammerDB v5.0's official RHEL 8 x86_64 release asset. Its tag resolves to commit `22ded31bf47b2ffe25263d686c0fc630965cfb76`; the archive's published SHA-1 is `f2d6a8026fa3ed6e3e427d30b79ec738abd53848` and the independently computed SHA-256 pin is `e547d11faaeec54b721cd661683a020c241f4474f11ece8803564cb17abd86d3`.
+- The release split is an EL8 compatibility boundary: HammerDB 6.0's RHEL 9 binary requires GLIBC versions unavailable on EL8. Workshop verifies the selected archive checksums, extracts each version to its versioned directory, checks the CLI and `LICENSE`, and updates `/opt/crucible/software/HammerDB` to the selected version. The adapter validates each sample manifest against either pinned release, independent of the controller's default version. HammerDB itself is neither rebuilt nor patched.
 - The upstream distribution is GPL-3.0; the complete upstream license is retained in `third-party/HammerDB-GPL-3.0.txt`. Adapter files use Apache-2.0 in `LICENSE`.
-- The prepared Alma 9 image supplies MariaDB and PostgreSQL server/client packages. The client manifest records the exact database binary versions and installed RPM versions used for each sample.
+- Each prepared userenv supplies MariaDB and PostgreSQL server/client packages. The client manifest records the exact HammerDB release, database binary versions, and installed RPM versions used for each sample.
 
 ## Database lifecycle
 
