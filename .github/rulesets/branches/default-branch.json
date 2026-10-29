@@ -36,6 +36,19 @@
         "required_reviewers": []
       },
       "type": "pull_request"
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "crucible-ci-complete",
+            "integration_id": 15368
+          }
+        ],
+        "strict_required_status_checks_policy": true
+      }
     }
   ],
   "source": "perftool-incubator/bench-hammerdb",
