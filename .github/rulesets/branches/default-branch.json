@@ -1,5 +1,10 @@
 {
-  "bypass_actors": [],
+  "id": 24954748,
+  "name": "default-branch",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "perftool-incubator/bench-hammerdb",
+  "enforcement": "active",
   "conditions": {
     "ref_name": {
       "exclude": [],
@@ -8,9 +13,6 @@
       ]
     }
   },
-  "enforcement": "active",
-  "id": 24954748,
-  "name": "default-branch",
   "rules": [
     {
       "type": "deletion"
@@ -19,39 +21,37 @@
       "type": "non_fast_forward"
     },
     {
+      "type": "pull_request",
       "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "dismissal_restriction": {
+          "enabled": false,
+          "allowed_actors": []
+        },
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true,
+        "require_extra_approval_for_unattributed_changes": true,
         "allowed_merge_methods": [
           "merge"
-        ],
-        "dismiss_stale_reviews_on_push": true,
-        "dismissal_restriction": {
-          "allowed_actors": [],
-          "enabled": false
-        },
-        "require_code_owner_review": false,
-        "require_extra_approval_for_unattributed_changes": true,
-        "require_last_push_approval": false,
-        "required_approving_review_count": 1,
-        "required_review_thread_resolution": true,
-        "required_reviewers": []
-      },
-      "type": "pull_request"
+        ]
+      }
     },
     {
       "type": "required_status_checks",
       "parameters": {
+        "strict_required_status_checks_policy": true,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           {
             "context": "crucible-ci-complete",
             "integration_id": 15368
           }
-        ],
-        "strict_required_status_checks_policy": true
+        ]
       }
     }
   ],
-  "source": "perftool-incubator/bench-hammerdb",
-  "source_type": "Repository",
-  "target": "branch"
+  "bypass_actors": []
 }
