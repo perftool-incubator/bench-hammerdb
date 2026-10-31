@@ -10,7 +10,7 @@ This file is updated with observed evidence. A planned procedure is not counted 
 - `bash -n hammerdb-base hammerdb-client` passed.
 - JSON parsing passed for Rickshaw, Multiplex, Workshop, benchmark metadata and the example run file; all five passed Draft 7 validation against the local Crucible schemas.
 - `git diff --check` passed.
-- All 20 Workshop manual command entries passed `bash -n`: 18 HammerDB release steps plus the two EL8 Python-alternative commands. The decoded checksum formatter was exercised with sample values and emitted a final newline byte.
+- The 18 HammerDB release command entries passed `bash -n`; the two EL8 Python-alternative commands have since been removed in the inherited-Python experiment. The decoded checksum formatter was exercised with sample values and emitted a final newline byte.
 
 ## Native HammerDB packaging checks
 
@@ -70,6 +70,17 @@ After splitting each release requirement into sequential, individually logged co
 | alma9 | 6.0 | `b354dfc4-4cc4-4186-aecc-cf091b6da0b3` | 60.053 s | 17,326 |
 
 These runs verify the successful Workshop install path and benchmark lifecycle for both releases. They did not force a requirement failure to inspect the preserved temporary directory.
+
+## EL8 inherited-Python package experiment
+
+On 2026-10-30, removed the distro `python3` package from `hammerdb_runtime_packages` and removed the EL8-only alternatives requirement. The Alma 8 and RHUI 8 Workshop stages both built, and each one-sample x86_64 MariaDB run completed and indexed using HammerDB 5.0, one warehouse, two workload VUs, one minute of ramp-up, one minute of measurement, CPU partitioning disabled, and mechanics-only `data-dir=.` / `log-dir=.` defaults.
+
+| Userenv | Run ID | Measurement period | NOPM |
+| --- | --- | ---: | ---: |
+| alma8 | `795d28c2-9236-42ef-8520-c23c158e2022` | 60.048 s | 8,803 |
+| rhubi8 | `508bf1a6-60fe-4cdb-8eea-2ac481d020d4` | 60.040 s | 9,587 |
+
+This confirms the tested EL8 profiles can inherit Python 3.12 from the Crucible engine base image without the `python3` distro package or an alternatives step. The EL8 profile remains necessary to select HammerDB 5.0 because the HammerDB 6.0 RHEL 9 binary needs a newer GLIBC. These one-sample runs are smoke compatibility evidence, not performance acceptance or a cross-userenv comparison.
 
 ## Adapter SIGTERM trials
 

@@ -19,7 +19,6 @@
       ],
       "requirements": [
         "hammerdb_runtime_packages",
-        "hammerdb_python312_default",
         "hammerdb_v5_release"
       ]
     }
@@ -36,20 +35,9 @@
           "postgresql-server",
           "postgresql",
           "libpq",
-          "python3",
           "rpm",
           "tar",
           "util-linux"
-        ]
-      }
-    },
-    {
-      "name": "hammerdb_python312_default",
-      "type": "manual",
-      "manual_info": {
-        "commands": [
-          "alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 312",
-          "alternatives --set python3 /usr/bin/python3.12"
         ]
       }
     },
